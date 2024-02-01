@@ -1,2 +1,2 @@
 # GoFront
-How do you build webpages without a JS framework
+How do you build webpages without a JS frameworks
