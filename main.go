@@ -1,25 +1,70 @@
+//go:generate qtc -dir=./templates
 package main
 
+//github.com/Dajgui/GoFront/templates
 import (
-	// "fmt"
-	"net/http"
+	"fmt"
+	"log"
+	"math/rand"
 
-	"github.com/gopherjs/gopherjs/js"
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/quicktemplate/examples/basicserver/templates"
 )
 
 func main() {
-	// create a new div element
-	div := js.Global.Get("document").Call("createElement", "div")
+	log.Printf("starting the server at http://localhost:8080 ...")
+	err := fasthttp.ListenAndServe("localhost:8080", requestHandler)
+	if err != nil {
+		log.Fatalf("unexpected error in server: %s", err)
+	}
+}
 
-	// set the innerHTML of the div
-	div.Set("innerHTML", "<h1>Hello, world!</h1>")
+func requestHandler(ctx *fasthttp.RequestCtx) {
+	switch string(ctx.Path()) {
+	case "/":
+		mainPageHandler(ctx)
+	case "/table":
+		tablePageHandler(ctx)
+	default:
+		errorPageHandler(ctx)
+	}
+	ctx.SetContentType("text/html; charset=utf-8")
+}
 
-	// /*document.write("Hello world!");*/
-	// js.Global.Get("document").Call("write", "Hello world!")
+func mainPageHandler(ctx *fasthttp.RequestCtx) {
+	p := &templates.MainPage{
+		CTX: ctx,
+	}
+	templates.WritePageTemplate(ctx, p)
+}
 
-	// append the div to the body of the page
-	js.Global.Get("document").Get("body").Call("appendChild", div)
+func tablePageHandler(ctx *fasthttp.RequestCtx) {
+	rowsCount := ctx.QueryArgs().GetUintOrZero("rowsCount")
+	if rowsCount == 0 {
+		rowsCount = 10
+	}
+	p := &templates.TablePage{
+		Rows: generateRows(rowsCount),
+	}
+	templates.WritePageTemplate(ctx, p)
+}
 
-	// start the server
-	http.ListenAndServe(":8080", nil)
+func errorPageHandler(ctx *fasthttp.RequestCtx) {
+	p := &templates.ErrorPage{
+		Path: ctx.Path(),
+	}
+	templates.WritePageTemplate(ctx, p)
+	ctx.SetStatusCode(fasthttp.StatusBadRequest)
+}
+
+func generateRows(rowsCount int) []string {
+	var rows []string
+	for i := 0; i < rowsCount; i++ {
+		r := fmt.Sprintf("row %d", i)
+		if rand.Intn(20) == 0 {
+			r = "bingo"
+		}
+		rows = append(rows, r)
+	}
+	return rows
 }
